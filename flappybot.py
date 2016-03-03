@@ -170,7 +170,6 @@ def showWelcomeAnimation():
                     'basex': basex,
                     'playerIndexGen': playerIndexGen,
                 }
-
         # adjust playery, playerIndex, basex
         if (loopIter + 1) % 5 == 0:
             playerIndex = playerIndexGen.next()
@@ -228,7 +227,14 @@ def mainGame(movementInfo, AI):
             if event.type == QUIT or (event.type == KEYDOWN and event.key == K_ESCAPE):
                 pygame.quit()
                 sys.exit()
-        
+            if event.type == KEYDOWN and event.key == K_UP:
+                global FPS
+                FPS += 10
+                print 'FPS: ', FPS
+            if event.type == KEYDOWN and event.key == K_DOWN:
+                global FPS
+                FPS -= 10
+                print 'FPS: ', FPS
         ## RL: Get player (bot) move
         GS = RL.FB_GS(playerx, playery, pipeVelX, playerVelY, upperPipes, lowerPipes)
         # sys.stdout.write(str(GS.GetMarkovRep())+ str(['{:.2f}'.format(x) for x in AI.weights])+'                                        ' + '\r')
