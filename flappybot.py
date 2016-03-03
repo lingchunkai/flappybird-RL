@@ -16,6 +16,10 @@ BASEY        = SCREENHEIGHT * 0.79
 # image, sound and hitmask  dicts
 IMAGES, SOUNDS, HITMASKS = {}, {}, {}
 
+# RL REWARDS
+FEEDBACK_LIFE = 0.1
+FEEDBACK_DEATH = -10000
+
 # list of all possible players (tuple of 3 positions of flap)
 PLAYERS_LIST = (
     # red bird
@@ -253,7 +257,7 @@ def mainGame(movementInfo, AI):
         if crashTest[0]:
 
             ## RL: handle terminal state       
-            AI.Reinforce(GS, botActionTaken, GS, -100)
+            AI.Reinforce(GS, botActionTaken, GS, FEEDBACK_DEATH)
             AI.RestartEpisode()
 
             return {
@@ -268,7 +272,7 @@ def mainGame(movementInfo, AI):
 
         # check for score
         ## RL: initialize feedback to 0
-        feedback = 0.1
+        feedback = FEEDBACK_LIFE
         playerMidPos = playerx + IMAGES['player'][0].get_width() / 2
         for pipe in upperPipes:
             pipeMidPos = pipe['x'] + IMAGES['pipe'][0].get_width() / 2
