@@ -7,7 +7,7 @@ from pygame.locals import *
 
 import RL
 
-FPS = 50
+FPS = 200
 SCREENWIDTH  = 288
 SCREENHEIGHT = 512
 # amount by which base can maximum shift to left
@@ -129,8 +129,9 @@ def main():
         movementInfo = showWelcomeAnimation() 
         
         # RL: Loop through desired number of times (same initial starting state)
-        AI = RL.FB_Random_AI(0.05)
-        for nIter in range(100):
+        # AI = RL.FB_Random_AI(0.05)
+        AI = RL.FB_SimpleCoarseMarkovAI(0.025, 0.9, 0.9, 0.000001)
+        for nIter in range(100000):
             crashInfo = mainGame(movementInfo, AI)
         # showGameOverScreen(crashInfo)
 
@@ -202,14 +203,14 @@ def mainGame(movementInfo, AI):
 
     # list of upper pipes
     upperPipes = [
-        {'x': SCREENWIDTH + 200, 'y': newPipe1[0]['y']},
-        {'x': SCREENWIDTH + 200 + (SCREENWIDTH / 2), 'y': newPipe2[0]['y']},
+        {'x': SCREENWIDTH + 1000, 'y': newPipe1[0]['y']},
+        {'x': SCREENWIDTH + 1000 + (SCREENWIDTH / 2), 'y': newPipe2[0]['y']},
     ]
 
     # list of lowerpipe
     lowerPipes = [
-        {'x': SCREENWIDTH + 200, 'y': newPipe1[1]['y']},
-        {'x': SCREENWIDTH + 200 + (SCREENWIDTH / 2), 'y': newPipe2[1]['y']},
+        {'x': SCREENWIDTH + 1000, 'y': newPipe1[1]['y']},
+        {'x': SCREENWIDTH + 1000 + (SCREENWIDTH / 2), 'y': newPipe2[1]['y']},
     ]
 
     pipeVelX = -4
@@ -230,9 +231,8 @@ def mainGame(movementInfo, AI):
         
         ## RL: Get player (bot) move
         GS = RL.FB_GS(playerx, playery, pipeVelX, playerVelY, upperPipes, lowerPipes)
-        print GS.GetMarkovRep()      
+        # sys.stdout.write(str(GS.GetMarkovRep())+ str(['{:.2f}'.format(x) for x in AI.weights])+'                                        ' + '\r')
         botActionTaken = AI.MakeMove(GS)        
-
 
         if  botActionTaken == True:
             if playery > -2 * IMAGES['player'][0].get_height():
@@ -247,7 +247,8 @@ def mainGame(movementInfo, AI):
         if crashTest[0]:
 
             ## RL: handle terminal state       
-
+            AI.Reinforce(GS, botActionTaken, GS, -100)
+            AI.RestartEpisode()
 
             return {
                 'y': playery,
@@ -261,7 +262,7 @@ def mainGame(movementInfo, AI):
 
         # check for score
         ## RL: initialize feedback to 0
-        feedback = 0
+        feedback = 0.1
         playerMidPos = playerx + IMAGES['player'][0].get_width() / 2
         for pipe in upperPipes:
             pipeMidPos = pipe['x'] + IMAGES['pipe'][0].get_width() / 2
