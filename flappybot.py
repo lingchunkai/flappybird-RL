@@ -5,6 +5,12 @@ import sys
 import pygame
 from pygame.locals import *
 
+import numpy as np
+import matplotlib
+# matplotlib.use("Agg")
+import matplotlib.pyplot as plt
+
+
 import RL
 
 FPS = 200
@@ -135,8 +141,16 @@ def main():
         # RL: Loop through desired number of times (same initial starting state)
         # AI = RL.FB_Random_AI(0.05)
         AI = RL.FB_SimpleCoarseMarkovAI(0.025, 0.9, 0.9, 0.000001)
+        scores = []
         for nIter in range(100000):
             crashInfo = mainGame(movementInfo, AI)
+            scores.append(crashInfo['gameScore'])
+            if (nIter % 5) == 0:
+                plt.plot(range(nIter+1), scores)
+                #h.set_xdata(range(nIter+1))
+                #h.set_ydata(scores)
+                #plt.draw()
+                plt.savefig('trend.png')
         # showGameOverScreen(crashInfo)
 
 
@@ -226,6 +240,8 @@ def mainGame(movementInfo, AI):
     playerFlapAcc =  -9   # players speed on flapping
     playerFlapped = False # True when player flaps
 
+
+    curGameScore = 0
     while True:
         for event in pygame.event.get():
             if event.type == QUIT or (event.type == KEYDOWN and event.key == K_ESCAPE):
@@ -259,6 +275,7 @@ def mainGame(movementInfo, AI):
             ## RL: handle terminal state       
             AI.Reinforce(GS, botActionTaken, GS, FEEDBACK_DEATH)
             AI.RestartEpisode()
+            curGameScore += FEEDBACK_DEATH
 
             return {
                 'y': playery,
@@ -268,6 +285,7 @@ def mainGame(movementInfo, AI):
                 'lowerPipes': lowerPipes,
                 'score': score,
                 'playerVelY': playerVelY,
+                'gameScore' : curGameScore,
             }
 
         # check for score
@@ -278,8 +296,7 @@ def mainGame(movementInfo, AI):
             pipeMidPos = pipe['x'] + IMAGES['pipe'][0].get_width() / 2
             if pipeMidPos <= playerMidPos < pipeMidPos + 4:
                 ## RL: update feedback if non-0
-                feedback = 1;
-                score += 1
+                feedback = FEEDBACK_LIFE;
                 SOUNDS['point'].play()
 
         # playerIndex basex change
@@ -315,6 +332,7 @@ def mainGame(movementInfo, AI):
         ## RL: perform feedback
         NEXT_GS = RL.FB_GS(playerx, playery, pipeVelX, playerVelY, upperPipes, lowerPipes)
         AI.Reinforce(GS, botActionTaken, NEXT_GS, feedback)
+        curGameScore += feedback
 
         # draw sprites
         SCREEN.blit(IMAGES['background'], (0,0))

@@ -54,13 +54,13 @@ class FB_GS:
         VELOCITY_Y_END = np.concatenate((np.arange(-7, 11, 1), np.array([float('inf')])))
 
         # INTERVAL_X = zip(INTERVAL_X_START, INTERVAL_X_END)
-        INTERVAL_Y_TOP = zip(INTERVAL_Y_TOP_PIPE_START, INTERVAL_Y_TOP_PIPE_START)
+        # INTERVAL_Y_TOP = zip(INTERVAL_Y_TOP_PIPE_START, INTERVAL_Y_TOP_PIPE_START)
         INTERVAL_Y_GROUND = zip(INTERVAL_Y_GROUND_START, INTERVAL_Y_GROUND_END)
         VELOCITY_Y = zip(VELOCITY_Y_START, VELOCITY_Y_END)
         ACTIONS = [False, True]
         
         # FB_GS.COARSE_STATES = list(itertools.product(INTERVAL_X, INTERVAL_Y_TOP, INTERVAL_Y_GROUND, VELOCITY_Y, ACTIONS))
-        FB_GS.COARSE_STATES = list(itertools.product(INTERVAL_Y_TOP, INTERVAL_Y_GROUND, VELOCITY_Y, ACTIONS))
+        FB_GS.COARSE_STATES = list(itertools.product(INTERVAL_Y_GROUND, VELOCITY_Y, ACTIONS))
         # for i in COARSE_STATES: print i
         # print len(COARSE_STATES) 
    
@@ -87,9 +87,8 @@ class FB_GS:
         
         #for (i, (INTV_X, INTV_Y_TOP, iNTV_Y_GROUND, INTV_VEL_Y, ACTION)) in enumerate(FB_GS.COARSE_STATES):
         
-        for (i, (INTV_Y_TOP, iNTV_Y_GROUND, INTV_VEL_Y, ACTION)) in enumerate(FB_GS.COARSE_STATES):
-            if (distanceToTopY <= INTV_Y_TOP[1]) and (distanceToTopY > INTV_Y_TOP[0]) \
-            and (distanceToGround <= INTV_Y_GROUND[1]) and (distanceToGround > INTV_Y_GROUND[0]) \
+        for (i, (INTV_Y_GROUND, INTV_VEL_Y, ACTION)) in enumerate(FB_GS.COARSE_STATES):
+            if (distanceToGround <= INTV_Y_GROUND[1]) and (distanceToGround > INTV_Y_GROUND[0]) \
             and (playerVelY <= INTV_VEL_Y[1]) and (playerVelY > INTV_VEL_Y[0]) \
             and (action == ACTION):
                 vec[i] = 1.0
