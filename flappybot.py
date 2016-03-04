@@ -220,14 +220,14 @@ def mainGame(movementInfo, AI):
 
     # list of upper pipes
     upperPipes = [
-        {'x': SCREENWIDTH + 1000, 'y': newPipe1[0]['y']},
-        {'x': SCREENWIDTH + 1000 + (SCREENWIDTH / 2), 'y': newPipe2[0]['y']},
+        {'x': SCREENWIDTH + 100000000, 'y': newPipe1[0]['y']},
+        {'x': SCREENWIDTH + 100000000 + (SCREENWIDTH / 2), 'y': newPipe2[0]['y']},
     ]
 
     # list of lowerpipe
     lowerPipes = [
-        {'x': SCREENWIDTH + 1000, 'y': newPipe1[1]['y']},
-        {'x': SCREENWIDTH + 1000 + (SCREENWIDTH / 2), 'y': newPipe2[1]['y']},
+        {'x': SCREENWIDTH + 100000000, 'y': newPipe1[1]['y']},
+        {'x': SCREENWIDTH + 100000000 + (SCREENWIDTH / 2), 'y': newPipe2[1]['y']},
     ]
 
     pipeVelX = -4
@@ -291,13 +291,15 @@ def mainGame(movementInfo, AI):
         # check for score
         ## RL: initialize feedback to 0
         feedback = FEEDBACK_LIFE
+        feedback = FEEDBACK_LIFE * 100000.0 * 1.0/float(10.0*(BASEY-playery))
+        print feedback
         playerMidPos = playerx + IMAGES['player'][0].get_width() / 2
         for pipe in upperPipes:
             pipeMidPos = pipe['x'] + IMAGES['pipe'][0].get_width() / 2
             if pipeMidPos <= playerMidPos < pipeMidPos + 4:
-                ## RL: update feedback if non-0
-                feedback = FEEDBACK_LIFE;
+                ## RL: update feedback if non-0 (pass tru pipe)
                 SOUNDS['point'].play()
+                pass
 
         # playerIndex basex change
         if (loopIter + 1) % 3 == 0:
