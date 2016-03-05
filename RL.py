@@ -45,13 +45,20 @@ class FB_GS:
         # INTERVAL_X_END = np.concatenate((np.arange(-55.0, 55.0, 20.0), np.array([float('inf')])))
 
         INTERVAL_Y_TOP_PIPE_START = np.concatenate((np.array([-float('inf')]), np.arange(-150.0, 10.0, 20.0)))
-        INTERVAL_Y_TOP_PIPE_END = np.concatenate((np.arange(-105.0, 55.0, 20.0), np.array([float('inf')])))
- 
-        INTERVAL_Y_GROUND_START = np.concatenate((np.array([-float('inf')]), np.arange(0.0, 200.0, 20.0)))
-        INTERVAL_Y_GROUND_END = np.concatenate((np.arange(45.0, 245.0, 20.0), np.array([float('inf')])))
-       
+        #INTERVAL_Y_TOP_PIPE_END = np.concatenate((np.arange(-105.0, 55.0, 20.0), np.array([float('inf')])))
+        INTERVAL_Y_TOP_PIPE_END = np.concatenate((np.arange(-130.0, 30.0, 20.0), np.array([float('inf')])))
+
+        # Very coarse y distance
+        # INTERVAL_Y_GROUND_START = np.concatenate((np.array([-float('inf')]), np.arange(0.0, 400.0, 20.0)))
+        # INTERVAL_Y_GROUND_END = np.concatenate((np.arange(45.0, 445.0, 20.0), np.array([float('inf')])))
+        # INTERVAL_Y_GROUND_END = np.concatenate((np.arange(20.0, 420.0, 20.0), np.array([float('inf')])))
+
+        INTERVAL_Y_GROUND_START = np.concatenate((np.array([-float('inf')]), np.arange(0.0, 400.0, 5.0)))
+        INTERVAL_Y_GROUND_END = np.concatenate((np.arange(5.0, 405.0, 5.0), np.array([float('inf')])))
+        
         VELOCITY_Y_START = np.concatenate((np.array([-float('inf')]), np.arange(-10, 8, 1)))
-        VELOCITY_Y_END = np.concatenate((np.arange(-7, 11, 1), np.array([float('inf')])))
+        VELOCITY_Y_END = np.concatenate((np.arange(-9, 9, 1), np.array([float('inf')])))
+        #VELOCITY_Y_END = np.concatenate((np.arange(-7, 11, 1), np.array([float('inf')])))
 
         # INTERVAL_X = zip(INTERVAL_X_START, INTERVAL_X_END)
         # INTERVAL_Y_TOP = zip(INTERVAL_Y_TOP_PIPE_START, INTERVAL_Y_TOP_PIPE_START)
@@ -92,8 +99,9 @@ class FB_GS:
             and (playerVelY <= INTV_VEL_Y[1]) and (playerVelY > INTV_VEL_Y[0]) \
             and (action == ACTION):
                 vec[i] = 1.0
-      
-        # vec = vec/np.sum(vec)
+        #print np.sum(vec)
+        vec = vec/np.sum(vec)
+       
         return vec
 
 class FB_AI:
@@ -191,7 +199,13 @@ class FB_MarkovAIBase:
     def RestartEpisode(self):
         # Inform agent that the current episode is over and to start a new one
         self.eligibilityTrace = np.zeros(self.weights.shape)
-        pass
+
+    def QueryQAction(self, gs, action):
+        stateAction = self.GetMarkovRep(gs, action)
+        return np.dot(self.weights, stateAction)
+
+    def QueryQBestAction(self, gs):
+        return max(self.QueryQAction(gs, False), self.QueryQAction(gs, True))        
 
 class FB_SimpleMarkovAI(FB_MarkovAIBase):
     def __init__(self, epsilon, lamb, gamma, alpha):
@@ -201,7 +215,7 @@ class FB_SimpleMarkovAI(FB_MarkovAIBase):
 class FB_SimpleCoarseMarkovAI(FB_MarkovAIBase):
     def __init__(self, epsilon, lamb, gamma, alpha):
         FB_GS.InitCoarseRep()
-        self.weights = np.zeros(len(FB_GS.COARSE_STATES))
+        self.weights = float(1000) * np.ones(len(FB_GS.COARSE_STATES))
         FB_MarkovAIBase.__init__(self, epsilon, lamb, gamma, alpha, FB_GS.GetMarkovCoarseRep)
 
 if __name__ == '__main__':

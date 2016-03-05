@@ -9,9 +9,11 @@ import numpy as np
 import matplotlib
 # matplotlib.use("Agg")
 import matplotlib.pyplot as plt
-
+from mpl_toolkits.mplot3d import Axes3D
+from matplotlib import cm
 
 import RL
+
 
 FPS = 200
 SCREENWIDTH  = 288
@@ -23,8 +25,9 @@ BASEY        = SCREENHEIGHT * 0.79
 IMAGES, SOUNDS, HITMASKS = {}, {}, {}
 
 # RL REWARDS
-FEEDBACK_LIFE = 0.1
-FEEDBACK_DEATH = -10000
+FEEDBACK_LIFE = 1.0
+FEEDBACK_DEATH = -0
+GAMMA = 0.95
 
 # list of all possible players (tuple of 3 positions of flap)
 PLAYERS_LIST = (
@@ -140,17 +143,30 @@ def main():
         
         # RL: Loop through desired number of times (same initial starting state)
         # AI = RL.FB_Random_AI(0.05)
-        AI = RL.FB_SimpleCoarseMarkovAI(0.025, 0.9, 0.9, 0.000001)
+        AI = RL.FB_SimpleCoarseMarkovAI(0.025, 0.99, GAMMA, 0.01)
         scores = []
         for nIter in range(100000):
             crashInfo = mainGame(movementInfo, AI)
             scores.append(crashInfo['gameScore'])
-            if (nIter % 5) == 0:
+
+            if (nIter % 100) == 0:
+                # Update plot of score history
                 plt.plot(range(nIter+1), scores)
-                #h.set_xdata(range(nIter+1))
-                #h.set_ydata(scores)
-                #plt.draw()
                 plt.savefig('trend.png')
+
+                # Update plot of optimal value function (only of position and velocity)a
+                X,Y = np.meshgrid(range(0, int(BASEY+30), 20), range(-10, 10, 1))
+                
+                Z = np.zeros(X.shape)
+                for yy in xrange(X.shape[0]):
+                    for xx in xrange(X.shape[1]):
+                        Z[yy, xx] = AI.QueryQBestAction(RL.FB_GS(0, X[yy, xx], 0, Y[yy,xx], [{'x':0, 'y':0}, {'x':0, 'y':0}], [{'x':0, 'y':0}, {'x':0, 'y':0}]))
+                
+                fig = plt.figure()
+                ax = fig.gca(projection='3d')
+                ax.plot_surface(X, Y, Z, rstride=1, cstride=1, cmap=cm.coolwarm, linewidth=0, antialiased=False)
+                plt.savefig('optimalQ.png')
+        
         # showGameOverScreen(crashInfo)
 
 
@@ -242,6 +258,7 @@ def mainGame(movementInfo, AI):
 
 
     curGameScore = 0
+    cum_discount = 1
     while True:
         for event in pygame.event.get():
             if event.type == QUIT or (event.type == KEYDOWN and event.key == K_ESCAPE):
@@ -275,7 +292,7 @@ def mainGame(movementInfo, AI):
             ## RL: handle terminal state       
             AI.Reinforce(GS, botActionTaken, GS, FEEDBACK_DEATH)
             AI.RestartEpisode()
-            curGameScore += FEEDBACK_DEATH
+            curGameScore += FEEDBACK_DEATH * cum_discount
 
             return {
                 'y': playery,
@@ -290,8 +307,7 @@ def mainGame(movementInfo, AI):
 
         # check for score
         ## RL: initialize feedback to 0
-        feedback = FEEDBACK_LIFE
-        feedback = FEEDBACK_LIFE * 100000.0 * 1.0/float(10.0*(BASEY-playery))
+        feedback = FEEDBACK_LIFE * (playery)
         print feedback
         playerMidPos = playerx + IMAGES['player'][0].get_width() / 2
         for pipe in upperPipes:
@@ -334,7 +350,8 @@ def mainGame(movementInfo, AI):
         ## RL: perform feedback
         NEXT_GS = RL.FB_GS(playerx, playery, pipeVelX, playerVelY, upperPipes, lowerPipes)
         AI.Reinforce(GS, botActionTaken, NEXT_GS, feedback)
-        curGameScore += feedback
+        curGameScore += feedback * cum_discount
+        cum_discount = cum_discount * GAMMA
 
         # draw sprites
         SCREEN.blit(IMAGES['background'], (0,0))
