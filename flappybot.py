@@ -28,6 +28,8 @@ IMAGES, SOUNDS, HITMASKS = {}, {}, {}
 FEEDBACK_LIFE = 1.0
 FEEDBACK_DEATH = -0
 GAMMA = 0.95
+RMAX = 450
+LEARNING_RATE = 0.3
 
 # list of all possible players (tuple of 3 positions of flap)
 PLAYERS_LIST = (
@@ -143,7 +145,8 @@ def main():
         
         # RL: Loop through desired number of times (same initial starting state)
         # AI = RL.FB_Random_AI(0.05)
-        AI = RL.FB_SimpleCoarseMarkovAI(0.025, 0.99, GAMMA, 0.01)
+        AI = RL.FB_SimpleCoarseMarkovAI(0.025, 0.20, GAMMA, LEARNING_RATE, initQ = RMAX/(1.0-GAMMA))
+        # AI = RL.FB_SimpleCoarseMarkovDecayE(0.60, GAMMA, 0.01)
         scores = []
         for nIter in range(100000):
             crashInfo = mainGame(movementInfo, AI)
@@ -151,24 +154,30 @@ def main():
 
             if (nIter % 100) == 0:
                 # Update plot of score history
+                fig = plt.figure()
                 plt.plot(range(nIter+1), scores)
                 plt.savefig('trend.png')
-
-                # Update plot of optimal value function (only of position and velocity)a
-                X,Y = np.meshgrid(range(0, int(BASEY+30), 20), range(-10, 10, 1))
+                plt.close(fig)
                 
-                Z = np.zeros(X.shape)
-                for yy in xrange(X.shape[0]):
-                    for xx in xrange(X.shape[1]):
-                        Z[yy, xx] = AI.QueryQBestAction(RL.FB_GS(0, X[yy, xx], 0, Y[yy,xx], [{'x':0, 'y':0}, {'x':0, 'y':0}], [{'x':0, 'y':0}, {'x':0, 'y':0}]))
-                
-                fig = plt.figure()
-                ax = fig.gca(projection='3d')
-                ax.plot_surface(X, Y, Z, rstride=1, cstride=1, cmap=cm.coolwarm, linewidth=0, antialiased=False)
-                plt.savefig('optimalQ.png')
-        
+                PlotValueFunction(AI)
+       
         # showGameOverScreen(crashInfo)
 
+def PlotValueFunction(AI):
+    if hasattr(AI, 'QueryQBestAction') and callable(getattr(AI, 'QueryQBestAction')):
+        # Update plot of optimal value function (only of position and velocity)a
+        X,Y = np.meshgrid(range(0, int(BASEY+30), 20), range(-10, 10, 1))
+        
+        Z = np.zeros(X.shape)
+        for yy in xrange(X.shape[0]):
+            for xx in xrange(X.shape[1]):
+                Z[yy, xx] = AI.QueryQBestAction(RL.FB_GS(0, X[yy, xx], 0, Y[yy,xx], [{'x':0, 'y':0}, {'x':0, 'y':0}], [{'x':0, 'y':0}, {'x':0, 'y':0}]))
+        
+        fig = plt.figure()
+        ax = fig.gca(projection='3d')
+        ax.plot_surface(X, Y, Z, rstride=1, cstride=1, cmap=cm.coolwarm, linewidth=0, antialiased=False)
+        plt.savefig('optimalQ.png')
+        plt.close(fig)
 
 def showWelcomeAnimation():
     """Shows welcome screen animation of flappy bird"""
@@ -259,6 +268,7 @@ def mainGame(movementInfo, AI):
 
     curGameScore = 0
     cum_discount = 1
+    timesteps = 0
     while True:
         for event in pygame.event.get():
             if event.type == QUIT or (event.type == KEYDOWN and event.key == K_ESCAPE):
@@ -272,6 +282,9 @@ def mainGame(movementInfo, AI):
                 global FPS
                 FPS -= 10
                 print 'FPS: ', FPS
+        timesteps += 1
+        if timesteps % 1000 == 0:
+            PlotValueFunction(AI)
         ## RL: Get player (bot) move
         GS = RL.FB_GS(playerx, playery, pipeVelX, playerVelY, upperPipes, lowerPipes)
         # sys.stdout.write(str(GS.GetMarkovRep())+ str(['{:.2f}'.format(x) for x in AI.weights])+'                                        ' + '\r')

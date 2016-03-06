@@ -28,7 +28,7 @@ class FB_GS:
 
         return (distanceToNextPipeX, distanceToTopY, distanceToGround, self.playerVelY)
 
-    def GetMarkovRep(self, action):
+    def GetMarkovStateActionRep(self, action):
         '''
         NOTES
         This representation is not expected to perform well - it only tries to cross the immediate next pipe        
@@ -66,24 +66,17 @@ class FB_GS:
         VELOCITY_Y = zip(VELOCITY_Y_START, VELOCITY_Y_END)
         ACTIONS = [False, True]
         
-        # FB_GS.COARSE_STATES = list(itertools.product(INTERVAL_X, INTERVAL_Y_TOP, INTERVAL_Y_GROUND, VELOCITY_Y, ACTIONS))
-        FB_GS.COARSE_STATES = list(itertools.product(INTERVAL_Y_GROUND, VELOCITY_Y, ACTIONS))
-        # for i in COARSE_STATES: print i
-        # print len(COARSE_STATES) 
-   
-    def GetMarkovCoarseRep(self, action):
-        '''
-        Coarse (overlapping) representation. 
-        
-        Regular intervals in the x and y directions, with some overlaps. 
-        Action is entirely separate dimension on the hypercube, no overlaps obviously
-        '''
+        # FB_GS.COARSE_STATES_ACTION = list(itertools.product(INTERVAL_X, INTERVAL_Y_TOP, INTERVAL_Y_GROUND, VELOCITY_Y, ACTIONS))
+        FB_GS.COARSE_STATES_ACTION = list(itertools.product(INTERVAL_Y_GROUND, VELOCITY_Y, ACTIONS))
+        FB_GS.COARSE_STATES = list(itertools.product(INTERVAL_Y_GROUND, VELOCITY_Y))   
 
+    def GetMarkovCoarseStateRep(self):
+        
         vec = np.zeros((len(FB_GS.COARSE_STATES),))
 
         (distanceToNextPipeX, distanceToTopY, distanceToGround, playerVelY) = self.GetCondensedRep()
         
-        # for (i, (INTV_X, INTV_Y_TOP, iNTV_Y_GROUND, INTV_VEL_Y, ACTION)) in enumerate(FB_GS.COARSE_STATES):
+        # for (i, (INTV_X, INTV_Y_TOP, iNTV_Y_GROUND, INTV_VEL_Y, ACTION)) in enumerate(FB_GS.COARSE_STATES_ACTION):
         #    if (distanceToNextPipeX <= INTV_X[1]) and (distanceToNextPipeX > INTV_X[0]) \
         #    and (distanceToTopY <= INTV_Y_TOP[1]) and (distanceToTopY > INTV_Y_TOP[0]) \
         #    and (distanceToGround <= INTV_Y_GROUND[1]) and (distanceToGround > INTV_Y_GROUND[0]) \
@@ -92,9 +85,41 @@ class FB_GS:
         #        vec[i] = 1.0
          
         
-        #for (i, (INTV_X, INTV_Y_TOP, iNTV_Y_GROUND, INTV_VEL_Y, ACTION)) in enumerate(FB_GS.COARSE_STATES):
+        #for (i, (INTV_X, INTV_Y_TOP, iNTV_Y_GROUND, INTV_VEL_Y, ACTION)) in enumerate(FB_GS.COARSE_STATES_ACTION):
         
-        for (i, (INTV_Y_GROUND, INTV_VEL_Y, ACTION)) in enumerate(FB_GS.COARSE_STATES):
+        for (i, (INTV_Y_GROUND, INTV_VEL_Y)) in enumerate(FB_GS.COARSE_STATES):
+            if (distanceToGround <= INTV_Y_GROUND[1]) and (distanceToGround > INTV_Y_GROUND[0]) \
+            and (playerVelY <= INTV_VEL_Y[1]) and (playerVelY > INTV_VEL_Y[0]):
+                vec[i] = 1.0
+        #print np.sum(vec)
+        vec = vec/np.sum(vec)
+       
+        return vec
+    
+    def GetMarkovCoarseStateActionRep(self, action):
+        '''
+        Coarse (overlapping) representation. 
+        
+        Regular intervals in the x and y directions, with some overlaps. 
+        Action is entirely separate dimension on the hypercube, no overlaps obviously
+        '''
+
+        vec = np.zeros((len(FB_GS.COARSE_STATES_ACTION),))
+
+        (distanceToNextPipeX, distanceToTopY, distanceToGround, playerVelY) = self.GetCondensedRep()
+        
+        # for (i, (INTV_X, INTV_Y_TOP, iNTV_Y_GROUND, INTV_VEL_Y, ACTION)) in enumerate(FB_GS.COARSE_STATES_ACTION):
+        #    if (distanceToNextPipeX <= INTV_X[1]) and (distanceToNextPipeX > INTV_X[0]) \
+        #    and (distanceToTopY <= INTV_Y_TOP[1]) and (distanceToTopY > INTV_Y_TOP[0]) \
+        #    and (distanceToGround <= INTV_Y_GROUND[1]) and (distanceToGround > INTV_Y_GROUND[0]) \
+        #    and (playerVelY <= INTV_VEL_Y[1]) and (playerVelY > INTV_VEL_Y[0]) \
+        #    and (action == ACTION):
+        #        vec[i] = 1.0
+         
+        
+        #for (i, (INTV_X, INTV_Y_TOP, iNTV_Y_GROUND, INTV_VEL_Y, ACTION)) in enumerate(FB_GS.COARSE_STATES_ACTION):
+        
+        for (i, (INTV_Y_GROUND, INTV_VEL_Y, ACTION)) in enumerate(FB_GS.COARSE_STATES_ACTION):
             if (distanceToGround <= INTV_Y_GROUND[1]) and (distanceToGround > INTV_Y_GROUND[0]) \
             and (playerVelY <= INTV_VEL_Y[1]) and (playerVelY > INTV_VEL_Y[0]) \
             and (action == ACTION):
@@ -141,9 +166,7 @@ class FB_Random_AI:
         return False
 
     def Reinforce(self, prev_gs, action,  next_gs, feedback):
-        
         # Recieve the next state and reward feeback
-
         pass
 
     def RestartEpisode(self):
@@ -155,22 +178,24 @@ class FB_MarkovAIBase:
     # Markov state is formed by (distanceToNextPipeX, distanceToTopY, self.playerVelY)
     # i.e. the state action space is given by [Markov State, action]
 
-    def __init__(self, epsilon, lamb, gamma, alpha, fnMarkovRep):
+    def __init__(self, fnEpsilon, lamb, gamma, alpha, fnMarkovStateActionRep, fnMarkovStateRep, fnUpdateModel=None):
         # Serve 
-        self.epsilon = epsilon
+        self.fnEpsilon = fnEpsilon
         self.lamb = lamb
         self.gamma = gamma 
         self.alpha = alpha
-        self.GetMarkovRep = fnMarkovRep
+        self.GetMarkovStateActionRep = fnMarkovStateActionRep
+        self.GetMarkovStateRep = fnMarkovStateRep
+        self.UpdateModel = fnUpdateModel
         self.RestartEpisode()
     
     def MakeMove(self, gs):
-        if random.random() < self.epsilon:
+        if random.random() < self.fnEpsilon(self, gs):
             if random.randint(1,2) == 1: actionChosen = True
             else: actionChosen = False
         else:
             # Select best action according to q values
-            bestAction, bestQVal = max(enumerate([self.GetMarkovRep(gs,action) for action in [0,1]]), key=lambda p: np.dot(self.weights, p[1]))
+            bestAction, bestQVal = max(enumerate([self.GetMarkovStateActionRep(gs,action) for action in [0,1]]), key=lambda p: np.dot(self.weights, p[1]))
             # bestStateAction = markovState + (bestAction == 1, )
             actionChosen = (bestAction == 1)
         return actionChosen
@@ -179,13 +204,16 @@ class FB_MarkovAIBase:
         # Receive the next state and reward feeback
      
         # Current state action pair
-        prevMarkovStateAction = self.GetMarkovRep(prev_gs, action) 
+        prevMarkovStateAction = self.GetMarkovStateActionRep(prev_gs, action) 
         # Update eligibility trace   
-        self.eligibilityTrace = self.gamma * self.lamb * self.eligibilityTrace +  prevMarkovStateAction
+        self.eligibilityTrace = self.gamma * self.lamb * self.eligibilityTrace +  prevMarkovStateAction        
+
+        # Update counts/models if needed
+        if self.UpdateModel: self.UpdateModel(self, prev_gs, action)
 
         # Compute epsilon greedy move
         nextAction = self.MakeMove(next_gs)
-        nextMarkovStateAction = self.GetMarkovRep(next_gs, action)        
+        nextMarkovStateAction = self.GetMarkovStateActionRep(next_gs, nextAction)
         
         # Compute error signal
         delta = feedback + self.gamma * (np.dot(self.weights, nextMarkovStateAction)) - np.dot(self.weights, prevMarkovStateAction)
@@ -193,15 +221,12 @@ class FB_MarkovAIBase:
         # Update weights according to learning rate
         self.weights += delta * self.eligibilityTrace * self.alpha
 
-        #print delta, self.eligibilityTrace, self.weights
-        # raw_input()
-        
     def RestartEpisode(self):
         # Inform agent that the current episode is over and to start a new one
         self.eligibilityTrace = np.zeros(self.weights.shape)
 
     def QueryQAction(self, gs, action):
-        stateAction = self.GetMarkovRep(gs, action)
+        stateAction = self.GetMarkovStateActionRep(gs, action)
         return np.dot(self.weights, stateAction)
 
     def QueryQBestAction(self, gs):
@@ -210,13 +235,32 @@ class FB_MarkovAIBase:
 class FB_SimpleMarkovAI(FB_MarkovAIBase):
     def __init__(self, epsilon, lamb, gamma, alpha):
         self.weights = np.zeros(4+1)
-        FB_MarkovAIBase.__init__(self, epsilon, lamb, gamma, alpha, FB_GS.GetMarkovRep)
+        FB_MarkovAIBase.__init__(self, lambda ai,gs: epsilon, lamb, gamma, alpha, FB_GS.GetMarkovStateActionRep)
 
 class FB_SimpleCoarseMarkovAI(FB_MarkovAIBase):
-    def __init__(self, epsilon, lamb, gamma, alpha):
+    def __init__(self, epsilon, lamb, gamma, alpha, initQ = 1000.0):
         FB_GS.InitCoarseRep()
-        self.weights = float(1000) * np.ones(len(FB_GS.COARSE_STATES))
-        FB_MarkovAIBase.__init__(self, epsilon, lamb, gamma, alpha, FB_GS.GetMarkovCoarseRep)
+        self.weights = initQ * np.ones(len(FB_GS.COARSE_STATES_ACTION))
+        FB_MarkovAIBase.__init__(self, lambda ai,gs: epsilon, lamb, gamma, alpha, FB_GS.GetMarkovCoarseStateActionRep, FB_GS.GetMarkovCoarseStateRep)
+
+class FB_SimpleCoarseMarkovDecayE(FB_MarkovAIBase):
+    def __init__(self, lamb, gamma, alpha, initQ = 1000.0, N0 = 10.0):
+        FB_GS.InitCoarseRep()
+        self.weights = initQ * np.ones(len(FB_GS.COARSE_STATES_ACTION))
+        self.visitCountState = np.zeros(len(FB_GS.COARSE_STATES))
+        self.visitCountStateAction = np.zeros(len(FB_GS.COARSE_STATES_ACTION))
+        self.N0 = N0
+        FB_MarkovAIBase.__init__(self, FB_SimpleCoarseMarkovDecayE.GetEpsilon, lamb, gamma, alpha, FB_GS.GetMarkovCoarseStateActionRep, FB_GS.GetMarkovCoarseStateRep, FB_SimpleCoarseMarkovDecayE.UpdateCount)
+    
+    def GetEpsilon(self, gs):
+        count = np.sum(self.visitCountState * self.GetMarkovStateRep(gs))
+        eps = self.N0/(self.N0+count)
+        print eps
+        return self.N0/(self.N0+count)
+
+    def UpdateCount(self, gs, action): 
+        self.visitCountState += self.GetMarkovStateRep(gs)
+        self.visitCountStateAction += self.GetMarkovStateActionRep(gs, action)
 
 if __name__ == '__main__':
     FB_GS.InitCoarseRep()
