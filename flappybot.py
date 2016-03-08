@@ -38,7 +38,6 @@ SPLINE_REWARD_FN = InterpolatedUnivariateSpline(REWARD_FIELD_X, REWARD_FIELD_VAL
 SPLINE_REWARD_LIST = SPLINE_REWARD_FN(np.linspace(-100, 450, 549))
 SPLINE_FEEDBACK = dict(zip(range(-100,450), SPLINE_REWARD_LIST))
 fig = plt.figure()
-print SPLINE_FEEDBACK
 plt.plot(np.linspace(-100,450,549), SPLINE_REWARD_LIST)
 plt.savefig('reward.png')
 plt.close(fig)
@@ -334,7 +333,6 @@ def mainGame(movementInfo, AI):
         ## RL: initialize feedback to 0
         feedback = FEEDBACK_LIFE * (playery) # Height feedback
         feedback = SPLINE_FEEDBACK[playery]
-        print feedback
         playerMidPos = playerx + IMAGES['player'][0].get_width() / 2
         for pipe in upperPipes:
             pipeMidPos = pipe['x'] + IMAGES['pipe'][0].get_width() / 2
