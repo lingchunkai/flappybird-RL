@@ -211,12 +211,17 @@ class FB_MarkovAIBase:
         # Update counts/models if needed
         if self.UpdateModel: self.UpdateModel(self, prev_gs, action)
 
-        # Compute epsilon greedy move
-        nextAction = self.MakeMove(next_gs)
-        nextMarkovStateAction = self.GetMarkovStateActionRep(next_gs, nextAction)
-        
+        if next_gs == 'TERMINAL' or next_gs == 0:
+            predictedNextQ = 0
+            print 'dead'
+        else:
+            # Compute epsilon greedy move
+            nextAction = self.MakeMove(next_gs)
+            nextMarkovStateAction = self.GetMarkovStateActionRep(next_gs, nextAction)
+            predictedNextQ = np.dot(self.weights, nextMarkovStateAction)
+
         # Compute error signal
-        delta = feedback + self.gamma * (np.dot(self.weights, nextMarkovStateAction)) - np.dot(self.weights, prevMarkovStateAction)
+        delta = feedback + self.gamma * predictedNextQ - np.dot(self.weights, prevMarkovStateAction)
         
         # Update weights according to learning rate
         self.weights += delta * self.eligibilityTrace * self.alpha

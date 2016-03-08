@@ -319,7 +319,7 @@ def mainGame(movementInfo, AI):
         if crashTest[0]:
 
             ## RL: handle terminal state       
-            AI.Reinforce(GS, botActionTaken, GS, FEEDBACK_DEATH)
+            AI.Reinforce(GS, botActionTaken, 0, FEEDBACK_DEATH)
             AI.RestartEpisode()
             curGameScore += FEEDBACK_DEATH * cum_discount
 
