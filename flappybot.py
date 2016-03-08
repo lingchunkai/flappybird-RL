@@ -118,6 +118,11 @@ def main():
     SOUNDS['swoosh'] = pygame.mixer.Sound('assets/audio/swoosh' + soundExt)
     SOUNDS['wing']   = pygame.mixer.Sound('assets/audio/wing' + soundExt)
 
+    SOUNDS['die'].set_volume(0.0)
+    SOUNDS['hit'].set_volume(0.0)
+    SOUNDS['point'].set_volume(0.0)
+    SOUNDS['swoosh'].set_volume(0.0)
+    SOUNDS['wing'].set_volume(0.0) 
     while True:
         # select random background sprites
         randBg = random.randint(0, len(BACKGROUNDS_LIST) - 1)
