@@ -11,7 +11,7 @@ import matplotlib
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 from matplotlib import cm
-
+from scipy.interpolate import InterpolatedUnivariateSpline
 import RL
 
 
@@ -27,9 +27,21 @@ IMAGES, SOUNDS, HITMASKS = {}, {}, {}
 # RL REWARDS
 FEEDBACK_LIFE = 1.0
 FEEDBACK_DEATH = -0
-GAMMA = 0.95
+GAMMA = 0.90
 RMAX = 450
 LEARNING_RATE = 0.3
+
+# REWARD FIELD
+REWARD_FIELD_X = [-100, -12, 76, 200, 290, 330, 399, 450]
+REWARD_FIELD_VAL = np.random.random_integers(0, RMAX, len(REWARD_FIELD_X))
+SPLINE_REWARD_FN = InterpolatedUnivariateSpline(REWARD_FIELD_X, REWARD_FIELD_VAL,k=3)
+SPLINE_REWARD_LIST = SPLINE_REWARD_FN(np.linspace(-100, 450, 549))
+SPLINE_FEEDBACK = dict(zip(range(-100,450), SPLINE_REWARD_LIST))
+fig = plt.figure()
+print SPLINE_FEEDBACK
+plt.plot(np.linspace(-100,450,549), SPLINE_REWARD_LIST)
+plt.savefig('reward.png')
+plt.close(fig)
 
 # list of all possible players (tuple of 3 positions of flap)
 PLAYERS_LIST = (
@@ -146,7 +158,7 @@ def main():
         # RL: Loop through desired number of times (same initial starting state)
         # AI = RL.FB_Random_AI(0.05)
         AI = RL.FB_SimpleCoarseMarkovAI(0.025, 0.20, GAMMA, LEARNING_RATE, initQ = RMAX/(1.0-GAMMA))
-        # AI = RL.FB_SimpleCoarseMarkovDecayE(0.60, GAMMA, 0.01)
+        # AI = RL.FB_SimpleCoarseMarkovDecayE(0.20, GAMMA, LEARNING_RATE, initQ = RMAX/(1.0-GAMMA))
         scores = []
         for nIter in range(100000):
             crashInfo = mainGame(movementInfo, AI)
@@ -283,7 +295,7 @@ def mainGame(movementInfo, AI):
                 FPS -= 10
                 print 'FPS: ', FPS
         timesteps += 1
-        if timesteps % 1000 == 0:
+        if timesteps % 5000 == 0:
             PlotValueFunction(AI)
         ## RL: Get player (bot) move
         GS = RL.FB_GS(playerx, playery, pipeVelX, playerVelY, upperPipes, lowerPipes)
@@ -320,7 +332,8 @@ def mainGame(movementInfo, AI):
 
         # check for score
         ## RL: initialize feedback to 0
-        feedback = FEEDBACK_LIFE * (playery)
+        feedback = FEEDBACK_LIFE * (playery) # Height feedback
+        feedback = SPLINE_FEEDBACK[playery]
         print feedback
         playerMidPos = playerx + IMAGES['player'][0].get_width() / 2
         for pipe in upperPipes:
