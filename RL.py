@@ -21,12 +21,20 @@ class FB_GS:
         Pipe gap size is assumed to be temporally constant 
         '''
 
-        # Assume x distance to next pipe is the same for upper/lower
-        distanceToNextPipeX = self.playerX - min(self.lowerPipes[0]['x'], self.upperPipes[0]['x'])
-        distanceToTopY = self.playerY - self.upperPipes[0]['y']
-        distanceToGround = self.playerY
+        # Get nearest pipe to right of player
+        (smallestD, bestK) = (-1000, 0)
+        
+        for k in xrange(len(self.lowerPipes)):
+            d = self.playerX - self.lowerPipes[k]['x']
+            if d > smallestD and d < 50:
+                smallestD = d
+                bestK = k
 
-        return (distanceToNextPipeX, distanceToTopY, distanceToGround, self.playerVelY)
+        # Assume x distance to next pipe is the same for upper/lower
+        distanceToNextPipeX = self.playerX - min(self.lowerPipes[bestK]['x'], self.upperPipes[bestK]['x'])
+        distanceToBottomY = self.playerY - self.lowerPipes[bestK]['y']
+
+        return (distanceToNextPipeX, distanceToBottomY, self.playerVelY)
 
     def GetMarkovStateActionRep(self, action):
         '''
@@ -41,59 +49,48 @@ class FB_GS:
     def InitCoarseRep():
         '''
         '''    
-        # INTERVAL_X_START = np.concatenate((np.array([-float('inf')]), np.arange(-100.0, 10.0, 20.0)))
-        # INTERVAL_X_END = np.concatenate((np.arange(-55.0, 55.0, 20.0), np.array([float('inf')])))
+        #INTERVAL_X_START = np.concatenate((np.array([-float('inf')]), np.arange(-120.0, 10.0, 5.0)))
+        #INTERVAL_X_END = np.concatenate((np.arange(-120.0, 10.0, 5.0), np.array([float('inf')])))
 
-        INTERVAL_Y_TOP_PIPE_START = np.concatenate((np.array([-float('inf')]), np.arange(-150.0, 10.0, 20.0)))
-        #INTERVAL_Y_TOP_PIPE_END = np.concatenate((np.arange(-105.0, 55.0, 20.0), np.array([float('inf')])))
-        INTERVAL_Y_TOP_PIPE_END = np.concatenate((np.arange(-130.0, 30.0, 20.0), np.array([float('inf')])))
-
-        # Very coarse y distance
-        # INTERVAL_Y_GROUND_START = np.concatenate((np.array([-float('inf')]), np.arange(0.0, 400.0, 20.0)))
-        # INTERVAL_Y_GROUND_END = np.concatenate((np.arange(45.0, 445.0, 20.0), np.array([float('inf')])))
-        # INTERVAL_Y_GROUND_END = np.concatenate((np.arange(20.0, 420.0, 20.0), np.array([float('inf')])))
-
-        INTERVAL_Y_GROUND_START = np.concatenate((np.array([-float('inf')]), np.arange(0.0, 400.0, 5.0)))
-        INTERVAL_Y_GROUND_END = np.concatenate((np.arange(5.0, 405.0, 5.0), np.array([float('inf')])))
+        INTERVAL_X_START = np.array([-float('inf')])
+        INTERVAL_X_END = np.array([float('inf')])
         
-        VELOCITY_Y_START = np.concatenate((np.array([-float('inf')]), np.arange(-10, 8, 1)))
-        VELOCITY_Y_END = np.concatenate((np.arange(-9, 9, 1), np.array([float('inf')])))
-        #VELOCITY_Y_END = np.concatenate((np.arange(-7, 11, 1), np.array([float('inf')])))
+        INTERVAL_Y_BOTTOM_PIPE_START = np.concatenate((np.array([-float('inf')]), np.arange(-150.0, 150.0, 4.0)))
+        INTERVAL_Y_BOTTOM_PIPE_END = np.concatenate((np.arange(-150.0, 150.0, 4.0), np.array([float('inf')])))
 
-        # INTERVAL_X = zip(INTERVAL_X_START, INTERVAL_X_END)
-        # INTERVAL_Y_TOP = zip(INTERVAL_Y_TOP_PIPE_START, INTERVAL_Y_TOP_PIPE_START)
-        INTERVAL_Y_GROUND = zip(INTERVAL_Y_GROUND_START, INTERVAL_Y_GROUND_END)
+        VELOCITY_Y_START = np.concatenate((np.array([-float('inf')]), np.arange(-10, 10, 2)))
+        VELOCITY_Y_END = np.concatenate((np.arange(-10, 10, 2), np.array([float('inf')])))
+
+        INTERVAL_X = zip(INTERVAL_X_START, INTERVAL_X_END)
+        INTERVAL_Y_BOTTOM_PIPE = zip(INTERVAL_Y_BOTTOM_PIPE_START, INTERVAL_Y_BOTTOM_PIPE_END)
         VELOCITY_Y = zip(VELOCITY_Y_START, VELOCITY_Y_END)
         ACTIONS = [False, True]
         
-        # FB_GS.COARSE_STATES_ACTION = list(itertools.product(INTERVAL_X, INTERVAL_Y_TOP, INTERVAL_Y_GROUND, VELOCITY_Y, ACTIONS))
-        FB_GS.COARSE_STATES_ACTION = list(itertools.product(INTERVAL_Y_GROUND, VELOCITY_Y, ACTIONS))
-        FB_GS.COARSE_STATES = list(itertools.product(INTERVAL_Y_GROUND, VELOCITY_Y))   
+        FB_GS.COARSE_STATES_ACTION = list(itertools.product(INTERVAL_X, INTERVAL_Y_BOTTOM_PIPE, VELOCITY_Y, ACTIONS))
+        FB_GS.COARSE_STATES = list(itertools.product(INTERVAL_X, INTERVAL_Y_BOTTOM_PIPE, VELOCITY_Y))
+
+        #FB_GS.STATE_CACHE = dict()
+        #FB_GS.STATE_ACTION_CACHE = dict()
 
     def GetMarkovCoarseStateRep(self):
         
         vec = np.zeros((len(FB_GS.COARSE_STATES),))
 
-        (distanceToNextPipeX, distanceToTopY, distanceToGround, playerVelY) = self.GetCondensedRep()
-        
-        # for (i, (INTV_X, INTV_Y_TOP, iNTV_Y_GROUND, INTV_VEL_Y, ACTION)) in enumerate(FB_GS.COARSE_STATES_ACTION):
-        #    if (distanceToNextPipeX <= INTV_X[1]) and (distanceToNextPipeX > INTV_X[0]) \
-        #    and (distanceToTopY <= INTV_Y_TOP[1]) and (distanceToTopY > INTV_Y_TOP[0]) \
-        #    and (distanceToGround <= INTV_Y_GROUND[1]) and (distanceToGround > INTV_Y_GROUND[0]) \
-        #    and (playerVelY <= INTV_VEL_Y[1]) and (playerVelY > INTV_VEL_Y[0]) \
-        #    and (action == ACTION):
-        #        vec[i] = 1.0
-         
-        
-        #for (i, (INTV_X, INTV_Y_TOP, iNTV_Y_GROUND, INTV_VEL_Y, ACTION)) in enumerate(FB_GS.COARSE_STATES_ACTION):
-        
-        for (i, (INTV_Y_GROUND, INTV_VEL_Y)) in enumerate(FB_GS.COARSE_STATES):
-            if (distanceToGround <= INTV_Y_GROUND[1]) and (distanceToGround > INTV_Y_GROUND[0]) \
-            and (playerVelY <= INTV_VEL_Y[1]) and (playerVelY > INTV_VEL_Y[0]):
+        (distanceToNextPipeX, distanceToBottomY, playerVelY) = self.GetCondensedRep()
+        #if (distanceToNextPipeX, distanceToBottomY, playerVelY) in FB_GS.STATE_CACHE:
+        #    print "OK"
+        #    return FB_GS.STATE_CACHE[(distanceToNextPipeX, distanceToBottomY, playerVelY)]
+
+        for (i, (INTV_X, INTV_Y_BOT_PIPE, INTV_VEL_Y)) in enumerate(FB_GS.COARSE_STATES):
+            if (distanceToBottomY <= INTV_Y_BOT_PIPE[1]) and (distanceToBottomY > INTV_Y_BOT_PIPE[0]) \
+            and (playerVelY <= INTV_VEL_Y[1]) and (playerVelY > INTV_VEL_Y[0]) \
+            and (distanceToNextPipeX <= INTV_X[1]) and (distanceToNextPipeX > INTV_X[0]):
                 vec[i] = 1.0
         #print np.sum(vec)
         vec = vec/np.sum(vec)
        
+        #FB_GS.STATE_CACHE[(distanceToNextPipeX, distanceToBottomY, playerVelY)] = vec
+        #print len(FB_GS.STATE_CACHE)
         return vec
     
     def GetMarkovCoarseStateActionRep(self, action):
@@ -106,27 +103,24 @@ class FB_GS:
 
         vec = np.zeros((len(FB_GS.COARSE_STATES_ACTION),))
 
-        (distanceToNextPipeX, distanceToTopY, distanceToGround, playerVelY) = self.GetCondensedRep()
-        
-        # for (i, (INTV_X, INTV_Y_TOP, iNTV_Y_GROUND, INTV_VEL_Y, ACTION)) in enumerate(FB_GS.COARSE_STATES_ACTION):
-        #    if (distanceToNextPipeX <= INTV_X[1]) and (distanceToNextPipeX > INTV_X[0]) \
-        #    and (distanceToTopY <= INTV_Y_TOP[1]) and (distanceToTopY > INTV_Y_TOP[0]) \
-        #    and (distanceToGround <= INTV_Y_GROUND[1]) and (distanceToGround > INTV_Y_GROUND[0]) \
-        #    and (playerVelY <= INTV_VEL_Y[1]) and (playerVelY > INTV_VEL_Y[0]) \
-        #    and (action == ACTION):
-        #        vec[i] = 1.0
-         
-        
-        #for (i, (INTV_X, INTV_Y_TOP, iNTV_Y_GROUND, INTV_VEL_Y, ACTION)) in enumerate(FB_GS.COARSE_STATES_ACTION):
-        
-        for (i, (INTV_Y_GROUND, INTV_VEL_Y, ACTION)) in enumerate(FB_GS.COARSE_STATES_ACTION):
-            if (distanceToGround <= INTV_Y_GROUND[1]) and (distanceToGround > INTV_Y_GROUND[0]) \
+        (distanceToNextPipeX, distanceToBottomY, playerVelY) = self.GetCondensedRep()
+        #if (distanceToNextPipeX, distanceToBottomY, playerVelY, action) in FB_GS.STATE_ACTION_CACHE:
+        #    print "OK"
+        #    return FB_GS.STATE_ACTION_CACHE[(distanceToNextPipeX, distanceToBottomY, playerVelY, action)]        
+
+        for (i, (INTV_X, INTV_Y_BOT_PIPE, INTV_VEL_Y, ACTION)) in enumerate(FB_GS.COARSE_STATES_ACTION):
+            if (distanceToBottomY <= INTV_Y_BOT_PIPE[1]) and (distanceToBottomY > INTV_Y_BOT_PIPE[0]) \
             and (playerVelY <= INTV_VEL_Y[1]) and (playerVelY > INTV_VEL_Y[0]) \
+            and (distanceToNextPipeX <= INTV_X[1]) and (distanceToNextPipeX > INTV_X[0]) \
             and (action == ACTION):
                 vec[i] = 1.0
-        #print np.sum(vec)
+        
+        print (distanceToNextPipeX, distanceToBottomY, playerVelY) 
+
         vec = vec/np.sum(vec)
-       
+
+        #FB_GS.STATE_ACTION_CACHE[(distanceToNextPipeX, distanceToBottomY, playerVelY, action)] = vec
+        #print len(FB_GS.STATE_ACTION_CACHE)
         return vec
 
 class FB_AI:
@@ -178,12 +172,12 @@ class FB_MarkovAIBase:
     # Markov state is formed by (distanceToNextPipeX, distanceToTopY, self.playerVelY)
     # i.e. the state action space is given by [Markov State, action]
 
-    def __init__(self, fnEpsilon, lamb, gamma, alpha, fnMarkovStateActionRep, fnMarkovStateRep, fnUpdateModel=None):
+    def __init__(self, fnEpsilon, lamb, gamma, fnAlpha, fnMarkovStateActionRep, fnMarkovStateRep, fnUpdateModel=None):
         # Serve 
         self.fnEpsilon = fnEpsilon
         self.lamb = lamb
         self.gamma = gamma 
-        self.alpha = alpha
+        self.fnAlpha = fnAlpha
         self.GetMarkovStateActionRep = fnMarkovStateActionRep
         self.GetMarkovStateRep = fnMarkovStateRep
         self.UpdateModel = fnUpdateModel
@@ -213,7 +207,6 @@ class FB_MarkovAIBase:
 
         if next_gs == 'TERMINAL' or next_gs == 0:
             predictedNextQ = 0
-            print 'dead'
         else:
             # Compute epsilon greedy move
             nextAction = self.MakeMove(next_gs)
@@ -224,7 +217,7 @@ class FB_MarkovAIBase:
         delta = feedback + self.gamma * predictedNextQ - np.dot(self.weights, prevMarkovStateAction)
         
         # Update weights according to learning rate
-        self.weights += delta * self.eligibilityTrace * self.alpha
+        self.weights += delta * self.eligibilityTrace * self.fnAlpha(self, prev_gs, next_gs, action)
 
     def RestartEpisode(self):
         # Inform agent that the current episode is over and to start a new one
@@ -240,22 +233,26 @@ class FB_MarkovAIBase:
 class FB_SimpleMarkovAI(FB_MarkovAIBase):
     def __init__(self, epsilon, lamb, gamma, alpha):
         self.weights = np.zeros(4+1)
-        FB_MarkovAIBase.__init__(self, lambda ai,gs: epsilon, lamb, gamma, alpha, FB_GS.GetMarkovStateActionRep)
+        FB_MarkovAIBase.__init__(self, lambda ai,gs: epsilon, lamb, gamma, lambda ai, state, next_state, action: alpha, FB_GS.GetMarkovStateActionRep)
 
 class FB_SimpleCoarseMarkovAI(FB_MarkovAIBase):
     def __init__(self, epsilon, lamb, gamma, alpha, initQ = 1000.0):
-        FB_GS.InitCoarseRep()
+        if not hasattr(FB_SimpleCoarseMarkovAI, 'initialized'):
+            FB_GS.InitCoarseRep()
+            FB_SimpleCoarseMarkovAI.initialized = True
         self.weights = initQ * np.ones(len(FB_GS.COARSE_STATES_ACTION))
-        FB_MarkovAIBase.__init__(self, lambda ai,gs: epsilon, lamb, gamma, alpha, FB_GS.GetMarkovCoarseStateActionRep, FB_GS.GetMarkovCoarseStateRep)
+        FB_MarkovAIBase.__init__(self, lambda ai,gs: epsilon, lamb, gamma, lambda ai, state, next_state, action: alpha, FB_GS.GetMarkovCoarseStateActionRep, FB_GS.GetMarkovCoarseStateRep)
 
 class FB_SimpleCoarseMarkovDecayE(FB_MarkovAIBase):
     def __init__(self, lamb, gamma, alpha, initQ = 1000.0, N0 = 10.0):
-        FB_GS.InitCoarseRep()
+        if not FB_SimpleCoarseMarkovDecayE.initialized:
+            FB_GS.InitCoarseRep()
+            FB_SimpleCoarseMarkovDecayE.initialized = True
         self.weights = initQ * np.ones(len(FB_GS.COARSE_STATES_ACTION))
         self.visitCountState = np.zeros(len(FB_GS.COARSE_STATES))
         self.visitCountStateAction = np.zeros(len(FB_GS.COARSE_STATES_ACTION))
         self.N0 = N0
-        FB_MarkovAIBase.__init__(self, FB_SimpleCoarseMarkovDecayE.GetEpsilon, lamb, gamma, alpha, FB_GS.GetMarkovCoarseStateActionRep, FB_GS.GetMarkovCoarseStateRep, FB_SimpleCoarseMarkovDecayE.UpdateCount)
+        FB_MarkovAIBase.__init__(self, FB_SimpleCoarseMarkovDecayE.GetEpsilon, lamb, gamma, lambda ai, state, next_state, action: alpha, FB_GS.GetMarkovCoarseStateActionRep, FB_GS.GetMarkovCoarseStateRep, FB_SimpleCoarseMarkovDecayE.UpdateCount)
     
     def GetEpsilon(self, gs):
         count = np.sum(self.visitCountState * self.GetMarkovStateRep(gs))
@@ -266,6 +263,37 @@ class FB_SimpleCoarseMarkovDecayE(FB_MarkovAIBase):
     def UpdateCount(self, gs, action): 
         self.visitCountState += self.GetMarkovStateRep(gs)
         self.visitCountStateAction += self.GetMarkovStateActionRep(gs, action)
+
+class FB_SimpleCoarseMarkovDecayEA(FB_MarkovAIBase):
+    def __init__(self, lamb, gamma, initQ = 1000.0, N0 = 200.0, N1 = 0.001, A0 = 5.0, A1 = 0.001):
+        if not hasattr(FB_SimpleCoarseMarkovDecayEA, 'initialized'):
+            FB_GS.InitCoarseRep()
+            FB_SimpleCoarseMarkovDecayEA.initialized = True
+        self.weights = initQ * np.ones(len(FB_GS.COARSE_STATES_ACTION))
+        self.visitCountState = np.zeros(len(FB_GS.COARSE_STATES))
+        self.visitCountStateAction = np.zeros(len(FB_GS.COARSE_STATES_ACTION))
+        self.N0 = N0
+        self.A0 = A0
+        self.A1 = A1
+        self.N1 = N1
+        FB_MarkovAIBase.__init__(self, FB_SimpleCoarseMarkovDecayEA.GetEpsilon, lamb, gamma, FB_SimpleCoarseMarkovDecayEA.GetAlpha, FB_GS.GetMarkovCoarseStateActionRep, FB_GS.GetMarkovCoarseStateRep, FB_SimpleCoarseMarkovDecayEA.UpdateCount)
+    
+    def GetAlpha(self, state, next_state,action):
+        count = np.sum(self.visitCountStateAction * self.GetMarkovStateActionRep(state, action))
+        alpha = 1.0/(self.A0+count*self.A1)
+        print 'alpha', alpha
+        return alpha        
+
+    def GetEpsilon(self, gs):
+        count = np.sum(self.visitCountState * self.GetMarkovStateRep(gs))
+        eps = 1.0/(self.N0+self.N1*count)
+        print 'eps', eps
+        return eps
+
+    def UpdateCount(self, gs, action): 
+        self.visitCountState += self.GetMarkovStateRep(gs)
+        self.visitCountStateAction += self.GetMarkovStateActionRep(gs, action)
+
 
 if __name__ == '__main__':
     FB_GS.InitCoarseRep()

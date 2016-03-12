@@ -19,28 +19,19 @@ FPS = 200
 SCREENWIDTH  = 288
 SCREENHEIGHT = 512
 # amount by which base can maximum shift to left
-PIPEGAPSIZE  = 100 # gap between upper and lower part of pipe
+PIPEGAPSIZE  = 125 # gap between upper and lower part of pipe, orig = 100, too small
 BASEY        = SCREENHEIGHT * 0.79
+FIRST_PIPE_LOC = 100
+EXTRA_X_DIST = 20
 # image, sound and hitmask  dicts
 IMAGES, SOUNDS, HITMASKS = {}, {}, {}
 
 # RL REWARDS
 FEEDBACK_LIFE = 1.0
-FEEDBACK_DEATH = -0
-GAMMA = 0.90
-RMAX = 450
-LEARNING_RATE = 0.3
-
-# REWARD FIELD
-REWARD_FIELD_X = [-100, -12, 76, 200, 290, 330, 399, 450]
-REWARD_FIELD_VAL = np.random.random_integers(0, RMAX, len(REWARD_FIELD_X))
-SPLINE_REWARD_FN = InterpolatedUnivariateSpline(REWARD_FIELD_X, REWARD_FIELD_VAL,k=3)
-SPLINE_REWARD_LIST = SPLINE_REWARD_FN(np.linspace(-100, 450, 549))
-SPLINE_FEEDBACK = dict(zip(range(-100,450), SPLINE_REWARD_LIST))
-fig = plt.figure()
-plt.plot(np.linspace(-100,450,549), SPLINE_REWARD_LIST)
-plt.savefig('reward.png')
-plt.close(fig)
+FEEDBACK_DEATH = -200
+GAMMA = 0.99
+RMAX = 1
+LEARNING_RATE = 0.2
 
 # list of all possible players (tuple of 3 positions of flap)
 PLAYERS_LIST = (
@@ -161,21 +152,32 @@ def main():
         
         # RL: Loop through desired number of times (same initial starting state)
         # AI = RL.FB_Random_AI(0.05)
-        AI = RL.FB_SimpleCoarseMarkovAI(0.025, 0.20, GAMMA, LEARNING_RATE, initQ = RMAX/(1.0-GAMMA))
+        # AI = RL.FB_SimpleCoarseMarkovAI(0.005, 0.20, GAMMA, LEARNING_RATE, initQ = 20)
         # AI = RL.FB_SimpleCoarseMarkovDecayE(0.20, GAMMA, LEARNING_RATE, initQ = RMAX/(1.0-GAMMA))
+        AI = RL.FB_SimpleCoarseMarkovDecayEA(0.20, GAMMA, initQ = 20, N0 = 200, N1 = 0.05, A0 = 5.0, A1 = 0.005)
+        
         scores = []
-        for nIter in range(100000):
+        sdscores = []
+        dscores = []
+        for nIter in range(5000):
             crashInfo = mainGame(movementInfo, AI)
-            scores.append(crashInfo['gameScore'])
+            dscores.append(crashInfo['gamePipeScore'])
 
             if (nIter % 100) == 0:
+                scores.append(np.mean(dscores))
+                sdscores.append(np.std(dscores))
+                print dscores
+                print scores
+
                 # Update plot of score history
                 fig = plt.figure()
-                plt.plot(range(nIter+1), scores)
-                plt.savefig('trend.png')
+                plt.errorbar(np.array(range(1,len(scores)+1)) * 100, scores, yerr = sdscores)
+                plt.savefig('trend_err2.png')
                 plt.close(fig)
+
+                dscores = []
                 
-                PlotValueFunction(AI)
+                # PlotValueFunction(AI)
        
         # showGameOverScreen(crashInfo)
 
@@ -261,14 +263,14 @@ def mainGame(movementInfo, AI):
 
     # list of upper pipes
     upperPipes = [
-        {'x': SCREENWIDTH + 100000000, 'y': newPipe1[0]['y']},
-        {'x': SCREENWIDTH + 100000000 + (SCREENWIDTH / 2), 'y': newPipe2[0]['y']},
+        {'x': SCREENWIDTH + FIRST_PIPE_LOC, 'y': newPipe1[0]['y']},
+        {'x': SCREENWIDTH + FIRST_PIPE_LOC + (SCREENWIDTH / 2) + EXTRA_X_DIST, 'y': newPipe2[0]['y']},
     ]
 
     # list of lowerpipe
     lowerPipes = [
-        {'x': SCREENWIDTH + 100000000, 'y': newPipe1[1]['y']},
-        {'x': SCREENWIDTH + 100000000 + (SCREENWIDTH / 2), 'y': newPipe2[1]['y']},
+        {'x': SCREENWIDTH + FIRST_PIPE_LOC, 'y': newPipe1[1]['y']},
+        {'x': SCREENWIDTH + FIRST_PIPE_LOC + (SCREENWIDTH / 2) + EXTRA_X_DIST, 'y': newPipe2[1]['y']},
     ]
 
     pipeVelX = -4
@@ -332,18 +334,19 @@ def mainGame(movementInfo, AI):
                 'score': score,
                 'playerVelY': playerVelY,
                 'gameScore' : curGameScore,
+                'gamePipeScore' : score,
             }
 
         # check for score
         ## RL: initialize feedback to 0
-        feedback = FEEDBACK_LIFE * (playery) # Height feedback
-        feedback = SPLINE_FEEDBACK[playery]
+        feedback = FEEDBACK_LIFE # reward for staying alive
         playerMidPos = playerx + IMAGES['player'][0].get_width() / 2
         for pipe in upperPipes:
             pipeMidPos = pipe['x'] + IMAGES['pipe'][0].get_width() / 2
             if pipeMidPos <= playerMidPos < pipeMidPos + 4:
                 ## RL: update feedback if non-0 (pass tru pipe)
                 SOUNDS['point'].play()
+                score += 1
                 pass
 
         # playerIndex basex change
@@ -465,7 +468,7 @@ def getRandomPipe():
     gapY = random.randrange(0, int(BASEY * 0.6 - PIPEGAPSIZE))
     gapY += int(BASEY * 0.2)
     pipeHeight = IMAGES['pipe'][0].get_height()
-    pipeX = SCREENWIDTH + 10
+    pipeX = SCREENWIDTH + 10 + EXTRA_X_DIST
 
     return [
         {'x': pipeX, 'y': gapY - pipeHeight},  # upper pipe
