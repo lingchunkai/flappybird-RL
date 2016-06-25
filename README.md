@@ -1,7 +1,5 @@
-FlappyBirdClone
-===============
-
-A Flappy Bird Clone made using [python-pygame][1]
+Simple RL for Flappy bird
+=========================
 
 How-to
 ------
@@ -10,19 +8,26 @@ How-to
 
 2. Install PyGame 1.9.X from [here](http://www.pygame.org/download.shtml)
 
-3. Clone this repository: `git clone https://github.com/sourabhv/FlappyBirdClone.git` or click `Download ZIP` in right panel and extract it.
+3. Clone this repository and extract it.
 
-4. Run `python flappy.py` from the repo's directory
+4. For single player, run `python flappy.py` from the repo's directory
 
-5. use <kbd>&uarr;</kbd> or <kbd>Space</kbd> key to play and <kbd>Esc</kbd> to close the game.
+5. Use <kbd>&uarr;</kbd> or <kbd>Space</kbd> key to play and <kbd>Esc</kbd> to close the game.
 
   (Note: Install pyGame for same version python as above)
 
   (For x64 windows, get exe [here](http://www.lfd.uci.edu/~gohlke/pythonlibs/#pygame))
 
-ScreenShot
-----------
+6. For RL, you will also need numpy, scipy, matplotlib. Run flappybot.py
 
-![Flappy Bird](screenshot1.png)
+Issues
+------
 
-[1]: http://www.pygame.org
+1. This work was hacked up for fun, which explains the terrible code quality.
+
+2. Code runs really slow because of inefficient coarse coding - I wanted to go for a more generic linear function approximator but decided to do away with it.
+
+Credits
+-------
+
+1) Adapted from: https://github.com/sourabhv/FlapPyBird
